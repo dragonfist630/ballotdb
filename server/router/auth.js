@@ -40,7 +40,7 @@ router.post("/login", cors(), async (req, res) => {
     if (userDetails) {
       const isPasswordMatch = await bcrpyt.compare(password, userDetails.password);
       if (isPasswordMatch) {
-        return res.status(201).json([userDetails.id, userDetails.firstName, userDetails.lastName]);
+        return res.status(201).json([userDetails.id, userDetails.firstName, userDetails.lastName, userDetails.queryName]);
       } else {
         return res.status(422).json({ error: "Invalid credintials" });
       }
@@ -68,6 +68,25 @@ router.post("/voteQueries", cors(), async (req, res) => {
     res.status(422).json({ error: "User Doesn't exists." });
     }
   } catch (error) {
+    console.log(error);
+  }
+});
+
+router.post("/resetpass", cors(), async (req,res)=>{
+  const {emailId, password} = req.body;
+  if(!emailId || !password){
+    return res.status(422).json({error:"Provide all details"});
+  }
+  try{
+    const emailExists = await Usr.findOne({emailId:emailId});
+    if(emailExists){
+      emailExists.password = password;
+      emailExists.save();
+      return res.status(201).json({message:"Password reset successfully."});
+    }
+    res.status(422).json({error:"User doesn't exists."})
+
+  }catch(error){
     console.log(error);
   }
 });
