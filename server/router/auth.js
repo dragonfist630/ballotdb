@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const bcrpyt = require("bcryptjs");
 const cors = require("cors");
@@ -6,6 +7,7 @@ const cors = require("cors");
 require("../DB/conn.js");
 const Usr = require("../model/userSchema.js");
 const Query = require("../model/querySchema.js");
+const { ObjectID } = require("bson");
 
 router.get("/", cors(), (req, res) => {
   res.send("hello there!!!");
@@ -51,50 +53,28 @@ router.post("/login", cors(), async (req, res) => {
   }
 });
 
-router.post("/voteQueries", cors(), async (req, res) => {
-  const { userId, queryName } = req.body;
-  if (!userId || !queryName) {
-    return res.status(422).json({ error: "Please provide details" });
+//forgotpass.js
+router.post("/resetpass", cors(), async (req, res) => {
+  const { emailId, password } = req.body;
+  if (!emailId || !password) {
+    return res.status(422).json({ error: "Provide all details" });
   }
   try {
-    const userExists = await Usr.findOne({_id: userId });
-    if (userExists) {
-      console.log(userExists);
-      userExists.queryName.push(queryName);
-      userExists.save();
-      return res.status(201).json({ message: "Vote Uploaded." });
+    const emailExists = await Usr.findOne({ emailId: emailId });
+    if (emailExists) {
+      emailExists.password = password;
+      emailExists.save();
+      return res.status(201).json({ message: "Password reset successfully." });
     }
-    else{
-    res.status(422).json({ error: "User Doesn't exists." });
-    }
+    res.status(422).json({ error: "User doesn't exists." });
   } catch (error) {
     console.log(error);
   }
 });
 
-router.post("/resetpass", cors(), async (req,res)=>{
-  const {emailId, password} = req.body;
-  if(!emailId || !password){
-    return res.status(422).json({error:"Provide all details"});
-  }
-  try{
-    const emailExists = await Usr.findOne({emailId:emailId});
-    if(emailExists){
-      emailExists.password = password;
-      emailExists.save();
-      return res.status(201).json({message:"Password reset successfully."});
-    }
-    res.status(422).json({error:"User doesn't exists."})
-
-  }catch(error){
-    console.log(error);
-  }
-});
-
+//Createquery.js
 router.post("/querys", cors(), async (req, res) => {
   const { queryName, optionName, value, totalVotes } = req.body;
-  console.log(req.body);
-  console.log(optionName, value);
   const queryDetails = await Query.findOne({ queryName: queryName });
   try {
     if (queryDetails) {
@@ -108,12 +88,56 @@ router.post("/querys", cors(), async (req, res) => {
   }
 });
 
-router.get("/getquery", cors(), async (req, res) => {
-  const temp = await Query.find();
+router.post("/voteQueries", cors(), async (req, res) => {
+  const { userId, queryName, optionName } = req.body;
+  if (!userId || !queryName) {
+    return res.status(422).json({ error: "Please provide details" });
+  }
   try {
-    res.status(201).json(temp);
-  } catch (e) {
-    console.log(e);
+    const userExists = await Usr.findOne({ _id: userId });
+    const querExists = await Query.findOne({ _id: queryName });
+    if (userExists) {      
+      userExists.queryName.push(queryName);
+      userExists.save();
+      querExists.optionName.map((currElem, index) => {
+        if (currElem === optionName) {
+          querExists.value[index] = querExists.value[index] + 1;
+        }
+      });
+      querExists.totalVotes=querExists.totalVotes+1;
+      querExists.save();
+      return res.status(201).json({ message: "Vote Uploaded." });
+    } else {
+      res.status(422).json({ error: "User Doesn't exists." });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+router.post("/getvotedquery", cors(), async (req, res) => {
+  var {myId} = req.body; 
+  // console.log(myId); 
+  if(!myId){
+    return res.status(422).json({error:"Please provide all details."});
+  }
+  try {
+    const temp = await Usr.findOne({ _id: myId });
+    if(temp){
+      return res.status(201).json(temp.queryName);
+    }
+    res.status(422).json({error:"User doesn't exist."});
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+router.get("/getquery", cors(), async (req,res)=>{
+  const query = await Query.find();
+  try{
+    res.status(201).json(query);
+  }catch(error){
+    console.log(error);
   }
 });
 
