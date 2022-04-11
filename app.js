@@ -22,3 +22,4 @@ app.use(require("./router/auth"));
 app.listen(PORT, () => {
   console.log(`Server is running at port ${process.env.PORT}`);
 });
+
