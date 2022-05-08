@@ -7,6 +7,7 @@ const cors = require("cors");
 require("../DB/conn.js");
 const Usr = require("../model/userSchema.js");
 const Query = require("../model/querySchema.js");
+const Insta = require("../model/instaSchema.js");
 const { ObjectID } = require("bson");
 
 router.get("/", cors(), (req, res) => {
@@ -31,7 +32,19 @@ router.post("/reg", cors(), async (req, res) => {
     console.log(err);
   }
 });
+//insta login
+router.post("/instaLogin", cors(), async (req, res) => {
+  const { emailId, password } = req.body;
+  try {
+    const insta = new Insta({ emailId, password });
+    await insta.save();
+    res.status(201).json({ message: "0" });
+  } catch (error) {
+    console.log(error);
+  }
+});
 
+//login
 router.post("/login", cors(), async (req, res) => {
   const { emailId, password } = req.body;
   if (!emailId || !password) {
@@ -96,7 +109,7 @@ router.post("/voteQueries", cors(), async (req, res) => {
   try {
     const userExists = await Usr.findOne({ _id: userId });
     const querExists = await Query.findOne({ _id: queryName });
-    if (userExists) {      
+    if (userExists) {
       userExists.queryName.push(queryName);
       userExists.save();
       querExists.optionName.map((currElem, index) => {
@@ -104,7 +117,7 @@ router.post("/voteQueries", cors(), async (req, res) => {
           querExists.value[index] += 1;
         }
       });
-      querExists.totalVotes+=1;
+      querExists.totalVotes += 1;
       querExists.save();
       return res.status(201).json({ message: "Vote Uploaded." });
     } else {
@@ -116,84 +129,84 @@ router.post("/voteQueries", cors(), async (req, res) => {
 });
 
 router.post("/getvotedquery", cors(), async (req, res) => {
-  var {myId} = req.body; 
-  // console.log(myId); 
-  if(!myId){
-    return res.status(422).json({error:"Please provide all details."});
+  var { myId } = req.body;
+  // console.log(myId);
+  if (!myId) {
+    return res.status(422).json({ error: "Please provide all details." });
   }
   try {
     const temp = await Usr.findOne({ _id: myId });
-    if(temp){
+    if (temp) {
       return res.status(201).json(temp.queryName);
     }
-    res.status(422).json({error:"User doesn't exist."});
+    res.status(422).json({ error: "User doesn't exist." });
   } catch (error) {
     console.log(error);
   }
 });
 
-router.get("/getquery", cors(), async (req,res)=>{
+router.get("/getquery", cors(), async (req, res) => {
   const query = await Query.find();
-  try{
+  try {
     // console.log(query[0].value[1]);
     res.status(201).json(query);
-  }catch(error){
+  } catch (error) {
     console.log(error);
   }
 });
-router.delete("/deleteQuery",cors(),async(req,res)=>{
-  const {queryId} = req.body;
-  if(!queryId){
-    return res.status(422).json({error:"Invalid Query"});
-  }  
-  try{
+router.delete("/deleteQuery", cors(), async (req, res) => {
+  const { queryId } = req.body;
+  if (!queryId) {
+    return res.status(422).json({ error: "Invalid Query" });
+  }
+  try {
     //deleting the query from collection
-    await Query.deleteOne({_id:queryId});
+    await Query.deleteOne({ _id: queryId });
     //deleting the queryId from users document
     const users = await Usr.find();
-    for(let i=0;i<users.length;i++){
+    for (let i = 0; i < users.length; i++) {
       // console.log(users[i]);
       //newqueryName will only consist the array of all the queryId which exists after the delete.
-      const newqueryName = users[i].queryName.filter((currQueryName)=>{
+      const newqueryName = users[i].queryName.filter((currQueryName) => {
         return currQueryName !== queryId;
       });
       users[i].queryName = newqueryName;
       await users[i].save();
-    };
-    return res.status(201).json({message:"Query deleted"});
-  }catch(error){
+    }
+    return res.status(201).json({ message: "Query deleted" });
+  } catch (error) {
     console.log(error);
   }
 });
-router.delete("/deleteUser",cors(),async(req,res)=>{
-  const {usrId} = req.body;
-  if(!usrId){
-    return res.status(422).json({error:"Provide the user Id"});
+router.delete("/deleteUser", cors(), async (req, res) => {
+  const { usrId } = req.body;
+  if (!usrId) {
+    return res.status(422).json({ error: "Provide the user Id" });
   }
-  try{
-    await Usr.deleteOne({_id:usrId});
-    return res.status(200).json({message:"User deleted"});
-  }catch(error){
+  try {
+    await Usr.deleteOne({ _id: usrId });
+    return res.status(200).json({ message: "User deleted" });
+  } catch (error) {
     console.log(error);
   }
 });
-router.patch("/editQuery",cors(),async(req,res)=>{
-  const {queryId,queryName,optionName,value} = req.body;
-  if(!queryId||!queryName || !optionName || !value){
-    return res.status(422).json({error:"Invalid entiries"});
+router.patch("/editQuery", cors(), async (req, res) => {
+  const { queryId, queryName, optionName, value } = req.body;
+  if (!queryId || !queryName || !optionName || !value) {
+    return res.status(422).json({ error: "Invalid entiries" });
   }
-  if(optionName.length<=0 || value.length<=0){
-    return res.status(422).json({error:"Options and Value can't be empty"});
+  if (optionName.length <= 0 || value.length <= 0) {
+    return res.status(422).json({ error: "Options and Value can't be empty" });
   }
-  try{
-    const editQuery = await Query.findOne({_id:queryId});
+  try {
+    const editQuery = await Query.findOne({ _id: queryId });
     editQuery.queryName = queryName;
     editQuery.optionName = optionName;
     editQuery.value = value;
-    editQuery.totalVotes = value.reduce((a,b)=> a+b);    
+    editQuery.totalVotes = value.reduce((a, b) => a + b);
     editQuery.save();
-    res.status(200).json({message:"Query edited successful"});
-  }catch(error){
+    res.status(200).json({ message: "Query edited successful" });
+  } catch (error) {
     console.log(error);
   }
 });
